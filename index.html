@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1117">
+<title>猜数字</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e1117;
+    --card: #161b22;
+    --line: #2d333b;
+    --text: #e6edf3;
+    --dim: #8b949e;
+    --blue: #2f81f7;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    padding: 18px 14px calc(18px + env(safe-area-inset-bottom));
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background: radial-gradient(120% 80% at 20% -10%, #1b2942 0%, var(--bg) 55%) fixed;
+  }
+  .card {
+    width: 100%;
+    max-width: 440px;
+    margin: auto;
+    padding: 20px 18px;
+    background: rgba(22, 27, 34, .94);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+  }
+  h1 { margin: 0; font-size: 21px; letter-spacing: .5px; }
+  .sub { margin: 4px 0 16px; font-size: 13px; color: var(--dim); }
+  .difficulty {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .difficulty button {
+    padding: 10px 6px;
+    font: inherit;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.25;
+    color: var(--text);
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .difficulty button small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--dim);
+  }
+  .difficulty button .rec {
+    display: block;
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--yellow);
+  }
+  .difficulty button[aria-pressed="true"] {
+    background: #122033;
+    border-color: var(--blue);
+    box-shadow: inset 0 0 0 1px var(--blue);
+  }
+  .stats { display: flex; gap: 8px; margin-bottom: 14px; }
+  .stat {
+    flex: 1;
+    padding: 8px 10px;
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 12px;
+    text-align: center;
+  }
+  .stat span { display: block; font-size: 11px; color: var(--dim); }
+  .stat b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  form { display: flex; gap: 8px; }
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px 14px;
+    font: inherit;
+    font-size: 17px;
+    color: var(--text);
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+  }
+  input:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
+  input:disabled { opacity: .5; }
+  button {
+    padding: 13px 18px;
+    font: inherit;
+    font-weight: 600;
+    color: #fff;
+    background: var(--blue);
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: default; transform: none; }
+  #again { width: 100%; margin-top: 10px; }
+  #msg { min-height: 48px; margin: 14px 0 0; font-size: 15px; color: var(--dim); }
+  #msg.small, #msg.big { color: var(--text); }
+  #msg.win { color: var(--green); font-weight: 600; }
+  #msg.lose { color: var(--red); }
+  #msg.warn { color: var(--yellow); }
+  .actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+  #reset {
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--dim);
+    background: transparent;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+  }
+  .tips { margin: 12px 0 0; font-size: 12px; color: #6e7681; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>猜数字</h1>
+  <p class="sub">先选难度，再在范围内猜数字</p>
+
+  <div class="difficulty" role="group" aria-label="选择难度">
+    <button type="button" data-diff="easy" aria-pressed="false">
+      简单
+      <small>1~10 · 5 次</small>
+      <span class="rec" data-rec="easy">最佳 –</span>
+    </button>
+    <button type="button" data-diff="normal" aria-pressed="false">
+      普通
+      <small>1~100 · 7 次</small>
+      <span class="rec" data-rec="normal">最佳 –</span>
+    </button>
+    <button type="button" data-diff="hard" aria-pressed="false">
+      困难
+      <small>1~1000 · 10 次</small>
+      <span class="rec" data-rec="hard">最佳 –</span>
+    </button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span>已猜</span><b id="count">0</b></div>
+    <div class="stat"><span>剩余</span><b id="left">–</b></div>
+    <div class="stat"><span>最好成绩</span><b id="best">–</b></div>
+  </div>
+
+  <form id="form" novalidate>
+    <input id="guess" type="text" inputmode="numeric" autocomplete="off"
+           enterkeyhint="send" placeholder="输入数字" aria-label="你的猜测" disabled>
+    <button id="submit" type="submit" disabled>猜</button>
+  </form>
+
+  <p id="msg" role="status" aria-live="polite">请选择难度开始游戏。</p>
+
+  <button id="again" type="button" hidden>再来一局</button>
+
+  <div class="actions">
+    <button id="reset" type="button">清除最好成绩</button>
+  </div>
+
+  <p class="tips">输入非数字或超出范围不扣次数；最好成绩保存在这台设备的浏览器里。</p>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const DIFFS = {
+    easy:   { name: "简单", max: 10,   attempts: 5 },
+    normal: { name: "普通", max: 100,  attempts: 7 },
+    hard:   { name: "困难", max: 1000, attempts: 10 }
+  };
+  const STORAGE_KEY = "guess-number-best-v1";
+
+  const $ = (id) => document.getElementById(id);
+  const form = $("form");
+  const guessInput = $("guess");
+  const submitBtn = $("submit");
+  const msg = $("msg");
+  const againBtn = $("again");
+  const resetBtn = $("reset");
+  const countEl = $("count");
+  const leftEl = $("left");
+  const bestEl = $("best");
+  const diffButtons = Array.from(document.querySelectorAll("[data-diff]"));
+
+  let diffKey = null;
+  let answer = 0;
+  let count = 0;
+  let over = true;
+
+  function loadBest() {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      const clean = {};
+      if (data && typeof data === "object") {
+        for (const key of Object.keys(DIFFS)) {
+          if (Number.isInteger(data[key]) && data[key] > 0) clean[key] = data[key];
+        }
+      }
+      return clean;
+    } catch (err) {
+      return {};
+    }
+  }
+
+  let best = loadBest();
+
+  function saveBest() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(best));
+    } catch (err) {
+      /* 隐私模式下可能写不进去，忽略即可 */
+    }
+  }
+
+  function renderRecords() {
+    for (const key of Object.keys(DIFFS)) {
+      const rec = document.querySelector('[data-rec="' + key + '"]');
+      rec.textContent = best[key] ? "最佳 " + best[key] + " 次" : "最佳 –";
+    }
+    bestEl.textContent = diffKey && best[diffKey] ? best[diffKey] + " 次" : "–";
+  }
+
+  function updateStats() {
+    countEl.textContent = String(count);
+    if (diffKey) {
+      leftEl.textContent = String(Math.max(0, DIFFS[diffKey].attempts - count));
+    } else {
+      leftEl.textContent = "–";
+    }
+    renderRecords();
+  }
+
+  function setMessage(text, cls) {
+    msg.textContent = text;
+    msg.className = cls || "";
+  }
+
+  function setPlaying(on) {
+    guessInput.disabled = !on;
+    submitBtn.disabled = !on;
+  }
+
+  function startGame(key) {
+    const conf = DIFFS[key];
+    diffKey = key;
+    answer = Math.floor(Math.random() * conf.max) + 1;
+    count = 0;
+    over = false;
+    guessInput.value = "";
+    setPlaying(true);
+    againBtn.hidden = true;
+    for (const btn of diffButtons) {
+      btn.setAttribute("aria-pressed", String(btn.dataset.diff === key));
+    }
+    setMessage("【" + conf.name + "】范围 1~" + conf.max + "，最多猜 " + conf.attempts + " 次。开始吧！", "small");
+    updateStats();
+    guessInput.focus();
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!diffKey || over) return;
+
+    const raw = guessInput.value.trim();
+    if (!/^[+-]?\d+$/.test(raw)) {
+      setMessage("输入无效，只能输入数字，请重新输入。", "warn");
+      guessInput.select();
+      return;
+    }
+
+    const conf = DIFFS[diffKey];
+    const n = Number(raw);
+    if (n < 1 || n > conf.max) {
+      setMessage("输入的数字不在范围内，请输入一个 1 到 " + conf.max + " 之间的整数。", "warn");
+      guessInput.select();
+      return;
+    }
+
+    count += 1;
+    updateStats();
+
+    if (n === answer) {
+      over = true;
+      setPlaying(false);
+      againBtn.hidden = false;
+      const old = best[diffKey];
+      if (!old || count < old) {
+        best[diffKey] = count;
+        saveBest();
+        setMessage("恭喜你猜对了！你一共猜了 " + count + " 次。新纪录！【" + conf.name + "】的最好成绩是 " + count + " 次。", "win");
+      } else {
+        setMessage("恭喜你猜对了！你一共猜了 " + count + " 次。【" + conf.name + "】的最好成绩仍是 " + old + " 次。", "win");
+      }
+      renderRecords();
+      againBtn.focus();
+      return;
+    }
+
+    if (count >= conf.attempts) {
+      over = true;
+      setPlaying(false);
+      againBtn.hidden = false;
+      const record = best[diffKey]
+        ? "【" + conf.name + "】的最好成绩还是 " + best[diffKey] + " 次。"
+        : "下次争取打破纪录。";
+      setMessage("很遗憾，你没有猜对。正确的数字是 " + answer + "。" + record, "lose");
+      againBtn.focus();
+      return;
+    }
+
+    if (n < answer) {
+      setMessage("你猜的数字小了，请再试一次。你已经猜了 " + count + " 次，还剩 " + (conf.attempts - count) + " 次机会。", "small");
+    } else {
+      setMessage("你猜的数字大了，请再试一次。你已经猜了 " + count + " 次，还剩 " + (conf.attempts - count) + " 次机会。", "big");
+    }
+    guessInput.value = "";
+    guessInput.focus();
+  });
+
+  for (const btn of diffButtons) {
+    btn.addEventListener("click", () => startGame(btn.dataset.diff));
+  }
+
+  againBtn.addEventListener("click", () => {
+    if (diffKey) startGame(diffKey);
+  });
+
+  resetBtn.addEventListener("click", () => {
+    if (!window.confirm("确定要清除所有难度下的最好成绩吗？")) return;
+    best = {};
+    saveBest();
+    renderRecords();
+  });
+
+  updateStats();
+})();
+</script>
+</body>
+</html>
